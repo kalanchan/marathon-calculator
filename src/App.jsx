@@ -13,31 +13,40 @@ const PaceButton = ({ startKm, endKm, onSetPace, label, defaultPace }) => {
   };
 
   // Format the segment description
-  const segmentDescription = `km ${startKm} to ${endKm}`;
+  let segmentDescription;
+  if (startKm === endKm) {
+    segmentDescription = `km ${startKm}`;
+  } else {
+    segmentDescription = `km ${startKm} to ${endKm}`;
+  }
   
   return (
     <span>
       {showInput ? (
         <span style={{ 
+          position: 'absolute',
+          zIndex: 10,
           display: 'inline-flex', 
           flexDirection: 'column', 
-          gap: '8px',
+          gap: '6px',
           backgroundColor: '#f0f9ff',
-          padding: '8px',
+          padding: '6px',
           borderRadius: '6px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          width: '160px',
+          right: '0'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>
-            Set pace for {segmentDescription}
+          <div style={{ fontSize: '11px', fontWeight: 'bold' }}>
+            Pace for {segmentDescription}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input
               style={{ 
-                width: '3.5rem', 
-                padding: '2px 4px', 
+                width: '3rem', 
+                padding: '2px 3px', 
                 border: '1px solid #ccc', 
-                borderRadius: '4px', 
-                fontSize: '12px' 
+                borderRadius: '3px', 
+                fontSize: '11px' 
               }}
               type="text"
               value={paceInput}
@@ -85,19 +94,20 @@ const PaceButton = ({ startKm, endKm, onSetPace, label, defaultPace }) => {
         <button
           onClick={() => setShowInput(true)}
           style={{ 
-            fontSize: '14px', 
-            padding: '8px 12px', 
+            fontSize: '11px', 
+            padding: '4px 6px', 
             backgroundColor: '#3b82f6', 
             color: 'white', 
             borderRadius: '4px',
-            marginLeft: '8px',
+            marginLeft: '4px',
             border: 'none',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap'
           }}
           title={`Set pace for ${segmentDescription}`}
         >
-          Set Segment Pace
+          edit pace
         </button>
       )}
     </span>
@@ -493,10 +503,30 @@ const MarathonCalculator = () => {
                 .filter(split => !isHalfMarathon || split.distance <= HALF_MARATHON_KM)
                 .map(({ label, distance }, index) => {
                 // Get the previous split distance for pace setting
-                const prevDistance = index > 0 ? keySplits[index-1].distance : 0;
-                const prevLabel = index > 0 ? keySplits[index-1].label : "0K";
-                const startKm = Math.ceil(prevDistance);
-                const endKm = Math.floor(distance);
+                const prevSplit = index > 0 ? keySplits.filter(split => !isHalfMarathon || split.distance <= HALF_MARATHON_KM)[index-1] : { distance: 0, label: "0K" };
+                const prevDistance = prevSplit.distance;
+                const prevLabel = prevSplit.label;
+                
+                // Handle special cases for segments
+                let startKm = Math.ceil(prevDistance);
+                let endKm = Math.floor(distance);
+                
+                // Handle edge case where segments would be empty (like half marathon)
+                if (startKm > endKm) {
+                  startKm = endKm;
+                }
+                
+                // For Half Marathon case, handle just km 21 and the fractional part
+                if (label === 'Half') {
+                  startKm = Math.floor(prevDistance) + 1; // Usually 21 (after 20K)
+                  endKm = Math.floor(distance);           // Also 21
+                }
+                
+                // For Full Marathon case, ensure we handle the fractional part
+                if (label === 'Full') {
+                  startKm = Math.floor(prevDistance) + 1; // Usually 41 (after 40K)
+                  endKm = Math.floor(distance);           // Usually 42
+                }
                 
                 return (
                   <div key={label} style={{ 
@@ -508,38 +538,54 @@ const MarathonCalculator = () => {
                     transition: 'transform 0.1s ease-in-out',
                     cursor: 'default'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
                           {label} Split
                         </span>
-                        <span style={{ fontSize: '18px' }}>
+                        {endKm >= startKm && (
+                          <PaceButton 
+                            startKm={startKm + 1} 
+                            endKm={endKm}
+                            label={label}
+                            defaultPace={formatPace(calculateCurrentAveragePace())}
+                            onSetPace={handleSetRangePace}
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
                           {formatTime(getCumulativeTime(distance))}
-                        </span>
-                        <span style={{ fontSize: '14px', color: '#555' }}>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#555' }}>
                           Segment Pace: {(() => {
                             // Calculate average pace for this segment
                             let segmentPaceSum = 0;
                             let count = 0;
+                            
+                            // Regular kilometers
                             for(let km = startKm + 1; km <= endKm; km++) {
                               if (kmPaces[km]) {
                                 segmentPaceSum += kmPaces[km];
                                 count++;
                               }
                             }
+                            
+                            // For Split with fractional distance
+                            if (label === 'Full' && kmPaces[42]) {
+                              // Weight the final partial km proportionally (0.195km)
+                              segmentPaceSum += kmPaces[42] * 0.195;
+                              count += 0.195;
+                            } else if (label === 'Half' && kmPaces[21]) {
+                              // Weight the final partial km for half marathon (0.0975km)
+                              segmentPaceSum += kmPaces[21] * 0.0975;
+                              count += 0.0975;
+                            }
+                            
                             return formatPace(count > 0 ? segmentPaceSum / count : 0);
                           })()} min/km
-                        </span>
-                      </div>
-                      {endKm >= startKm && (
-                        <PaceButton 
-                          startKm={startKm + 1} 
-                          endKm={endKm}
-                          label={label}
-                          defaultPace={formatPace(calculateCurrentAveragePace())}
-                          onSetPace={handleSetRangePace}
-                        />
-                      )}
+                          </div>
+                          </div>
                     </div>
                   </div>
                 );
