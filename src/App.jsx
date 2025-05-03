@@ -2,68 +2,84 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 // Pace Setting Button Component
-const PaceButton = ({ startKm, endKm, onSetPace, label }) => {
+const PaceButton = ({ startKm, endKm, onSetPace, label, defaultPace }) => {
   const [showInput, setShowInput] = useState(false);
-  const [paceInput, setPaceInput] = useState("5:00");
+  const [paceInput, setPaceInput] = useState(defaultPace || "5:00");
   
   const handleSetPace = () => {
     if (onSetPace(startKm, endKm, paceInput)) {
       setShowInput(false);
     }
   };
+
+  // Format the segment description
+  const segmentDescription = `km ${startKm} to ${endKm}`;
   
   return (
     <span>
       {showInput ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <input
-            style={{ 
-              width: '3.5rem', 
-              padding: '2px 4px', 
-              border: '1px solid #ccc', 
-              borderRadius: '4px', 
-              fontSize: '12px' 
-            }}
-            type="text"
-            value={paceInput}
-            onChange={(e) => setPaceInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSetPace();
-                e.preventDefault();
-              } else if (e.key === 'Escape') {
-                setShowInput(false);
-                e.preventDefault();
-              }
-            }}
-            placeholder="m:ss"
-            autoFocus
-          />
-          <button
-            onClick={handleSetPace}
-            style={{ 
-              fontSize: '12px', 
-              padding: '4px 8px', 
-              backgroundColor: '#10b981', 
-              color: 'white', 
-              borderRadius: '4px',
-              border: 'none' 
-            }}
-          >
-            Set
-          </button>
-          <button
-            onClick={() => setShowInput(false)}
-            style={{ 
-              fontSize: '12px', 
-              padding: '4px 8px', 
-              backgroundColor: '#d1d5db', 
-              borderRadius: '4px',
-              border: 'none' 
-            }}
-          >
-            ✕
-          </button>
+        <span style={{ 
+          display: 'inline-flex', 
+          flexDirection: 'column', 
+          gap: '8px',
+          backgroundColor: '#f0f9ff',
+          padding: '8px',
+          borderRadius: '6px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>
+            Set pace for {segmentDescription}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              style={{ 
+                width: '3.5rem', 
+                padding: '2px 4px', 
+                border: '1px solid #ccc', 
+                borderRadius: '4px', 
+                fontSize: '12px' 
+              }}
+              type="text"
+              value={paceInput}
+              onChange={(e) => setPaceInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSetPace();
+                  e.preventDefault();
+                } else if (e.key === 'Escape') {
+                  setShowInput(false);
+                  e.preventDefault();
+                }
+              }}
+              placeholder="m:ss"
+              autoFocus
+            />
+            <button
+              onClick={handleSetPace}
+              style={{ 
+                fontSize: '12px', 
+                padding: '4px 8px', 
+                backgroundColor: '#10b981', 
+                color: 'white', 
+                borderRadius: '4px',
+                border: 'none' 
+              }}
+            >
+              Set
+            </button>
+            <button
+              onClick={() => setShowInput(false)}
+              style={{ 
+                fontSize: '12px', 
+                padding: '4px 8px', 
+                backgroundColor: '#d1d5db', 
+                borderRadius: '4px',
+                border: 'none' 
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </span>
       ) : (
         <button
@@ -79,9 +95,9 @@ const PaceButton = ({ startKm, endKm, onSetPace, label }) => {
             cursor: 'pointer',
             fontWeight: 'bold'
           }}
-          title={`Set pace for ${label} section`}
+          title={`Set pace for ${segmentDescription}`}
         >
-          Set Pace
+          Set Segment Pace
         </button>
       )}
     </span>
@@ -388,7 +404,10 @@ const MarathonCalculator = () => {
               
             </label>
           </div>
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-3">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleCalculate();
+          }} className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-3">
             <label className="font-semibold">
               Target {isHalfMarathon ? 'Half' : 'Full'} Marathon Time (hh:mm:ss):
               <input 
@@ -400,12 +419,12 @@ const MarathonCalculator = () => {
               />
             </label>
             <button 
-              onClick={handleCalculate}
+              type="submit"
               className="px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Calculate
             </button>
-          </div>
+          </form>
           
           
         </div>
@@ -492,7 +511,7 @@ const MarathonCalculator = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>
-                        {label} Split
+                          {label} Split
                         </span>
                         <span style={{ fontSize: '18px' }}>
                           {formatTime(getCumulativeTime(distance))}
@@ -503,6 +522,7 @@ const MarathonCalculator = () => {
                           startKm={startKm + 1} 
                           endKm={endKm}
                           label={label}
+                          defaultPace={formatPace(calculateCurrentAveragePace())}
                           onSetPace={handleSetRangePace}
                         />
                       )}
