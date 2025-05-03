@@ -516,6 +516,9 @@ const MarathonCalculator = () => {
                         <span style={{ fontSize: '18px' }}>
                           {formatTime(getCumulativeTime(distance))}
                         </span>
+                        <span style={{ fontSize: '14px', color: '#555' }}>
+                          Avg: {formatPace(getCumulativeTime(distance) / distance)} min/km
+                        </span>
                       </div>
                       {endKm >= startKm && (
                         <PaceButton 
