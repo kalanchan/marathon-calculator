@@ -517,7 +517,18 @@ const MarathonCalculator = () => {
                           {formatTime(getCumulativeTime(distance))}
                         </span>
                         <span style={{ fontSize: '14px', color: '#555' }}>
-                          Avg: {formatPace(getCumulativeTime(distance) / distance)} min/km
+                          Segment Pace: {(() => {
+                            // Calculate average pace for this segment
+                            let segmentPaceSum = 0;
+                            let count = 0;
+                            for(let km = startKm + 1; km <= endKm; km++) {
+                              if (kmPaces[km]) {
+                                segmentPaceSum += kmPaces[km];
+                                count++;
+                              }
+                            }
+                            return formatPace(count > 0 ? segmentPaceSum / count : 0);
+                          })()} min/km
                         </span>
                       </div>
                       {endKm >= startKm && (
